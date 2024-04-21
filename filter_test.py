@@ -34,21 +34,21 @@ fs, x = wavfile.read("/home/sch/Music/megalomania.wav")
 print("wav shape: ", np.shape(x))
 for i in range(10):
     print(x[i,:])
-x = x[0:,:]
+x = x[0:10000,:]
 x = np.array(x)
 N = len(x[:,0])
 n = np.arange(0, N)
 
 c = [i for i in range(6*2, 0, -1)]
-taps = 6
+taps = 1
 d = polyphase_fir_2channel_wav(x, bandpass_coefs, taps)
 x_filt = np.convolve(x[:,0], c)
 
-for i in range(len(p[:,0])):
-    print("x:", x_filt[i], " p: ", p[i, 0])
-
-for i in range(len(x_filt)):
-    print("x:", x_filt[i], " d: ", d[i, 0])
+#for i in range(len(p[:,0])):
+#    print("x:", x_filt[i], " p: ", p[i, 0])
+#
+#for i in range(len(x_filt)):
+#    print("x:", x_filt[i], " d: ", d[i, 0])
 
 
 # plot bandpass filter response
@@ -61,6 +61,9 @@ for i in range(len(x_filt)):
 #for i in range(len(axs)):
 #    axs[i].grid(True)
 #plt.show()
+
+for i in range(16):
+    print("d[i]: ", d[i])
 
 # save as wav file
 #k = 1/(len(bandpass_coefs)*6)
