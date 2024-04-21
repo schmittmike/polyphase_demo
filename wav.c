@@ -129,12 +129,8 @@ int store_wav_file(const char *filename, struct Wav *data)
 
 	for (i = 0; i<44; i++) buf[i] = 0;
 
-
 	/* 0-3 file mark */
-	buf[0] = 'R';
-	buf[1] = 'I';
-	buf[2] = 'F';
-	buf[3] = 'F';
+	strncpy(&buf[0], "RIFF", 4);
 
 	/* 4-7 overall size */
 	value = 44 + data->data_size;
@@ -185,10 +181,7 @@ int store_wav_file(const char *filename, struct Wav *data)
 	buf[34] = 16;
 
 	/* 37-40 data header marker */
-	buf[36] = 'd';
-	buf[37] = 'a';
-	buf[38] = 't';
-	buf[39] = 'a';
+	strncpy(&buf[36], "data", 4);
 
 	/* 41-44 total bytes in data section */
 	value = data->data_size;
@@ -220,7 +213,7 @@ int store_wav_file(const char *filename, struct Wav *data)
 #if DEBUG
 	printf("\tbytes written: %d\n", written);
 #endif
-
+	free(raw);
 	return written;
 }
 
