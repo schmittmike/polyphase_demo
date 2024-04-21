@@ -1,0 +1,6 @@
+*.swo
+*.swp
+*.o
+polyphase_decimate
+*.wav
+__pycache__
