@@ -1,1 +1,9 @@
 # polyphase filter implement for ECE574
+
+audio_test.m: matlab script used for looking at wav files' frequency content
+filter_coefs.py: holds generated filter coefficients
+megalomania_band.fcf: matlab filter, bandpass for demonstration with a song.
+filter_test.py: serial implementation of polyphase filter
+
+polyphase_decimate.c: polyphase filter in C, taps are multithreaded
+wav.[ch]: helper functions for reading/writing wav file

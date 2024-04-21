@@ -1,10 +1,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "wav.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* mallocs the wav sample pointers
  * returns total bytes read from data section of wav header
@@ -105,8 +106,121 @@ int load_wav_file(const char *filename, struct Wav *data)
 	return read;
 }
 
+
+/* store data as wav file at filename.
+ *
+ * this function is hard coded for stereo 16-bit samples*/
 int store_wav_file(const char *filename, struct Wav *data)
 {
-	return 0;
+	int i;
+	int written;
+	uint32_t value;
+	char buf[44];
+	uint8_t *raw;
+
+	/* open .wav file for writing */
+	FILE *w = fopen(filename, "w+b");
+	if (w == NULL) {
+		perror(filename);
+		exit(1);
+	}
+
+	printf("[INFO] saving samples to %s\n", filename);
+
+	for (i = 0; i<44; i++) buf[i] = 0;
+
+
+	/* 0-3 file mark */
+	buf[0] = 'R';
+	buf[1] = 'I';
+	buf[2] = 'F';
+	buf[3] = 'F';
+
+	/* 4-7 overall size */
+	value = 44 + data->data_size;
+#if DEBUG
+	printf("\ttotal file size: %d\n", value);
+#endif
+	buf[4] = (value & 0x000000ff) >> 0;
+	buf[5] = (value & 0x0000ff00) >> 8;
+	buf[6] = (value & 0x00ff0000) >> 16;
+	buf[7] = (value & 0xff000000) >> 24;
+
+	/* 8-15 file mark */
+	strncpy(&buf[8], "WAVEfmt ", 8);
+
+	/* 17-20 fmt section size */
+	buf[16] = 16;
+
+	/* 21-22 format type */
+	buf[20] = 1;
+
+	/* 23-24 channels */
+	buf[22] = 2;
+
+	/* 25-28 sample rate */
+	value = data->sample_rate;
+#if DEBUG
+	printf("\tsample rate: %d\n", value);
+#endif
+	buf[24] = (value & 0x000000ff) >> 0;
+	buf[25] = (value & 0x0000ff00) >> 8;
+	buf[26] = (value & 0x00ff0000) >> 16;
+	buf[27] = (value & 0xff000000) >> 24;
+
+	/* 29-32 samplerate * 2bits per channel * channels / 8bitsperbyte */
+	value = (data->sample_rate*16*2) / 8;
+#if DEBUG
+	printf("\tbytes per second: %d\n", value);
+#endif
+	buf[28] = (value & 0x000000ff) >> 0;
+	buf[29] = (value & 0x0000ff00) >> 8;
+	buf[30] = (value & 0x00ff0000) >> 16;
+	buf[31] = (value & 0xff000000) >> 24;
+
+	/* 33-34 16-bit stereo mode */
+	buf[32] = 4;
+
+	/* 35-36 bits per sample*/
+	buf[34] = 16;
+
+	/* 37-40 data header marker */
+	buf[36] = 'd';
+	buf[37] = 'a';
+	buf[38] = 't';
+	buf[39] = 'a';
+
+	/* 41-44 total bytes in data section */
+	value = data->data_size;
+#if DEBUG
+	printf("\tsample rate: %d\n", value);
+#endif
+	buf[40] = (value & 0x000000ff) >> 0;
+	buf[41] = (value & 0x0000ff00) >> 8;
+	buf[42] = (value & 0x00ff0000) >> 16;
+	buf[43] = (value & 0xff000000) >> 24;
+
+	written = fwrite(buf, sizeof(uint8_t), 44, w);
+
+	raw = malloc(data->N*2*2*sizeof(uint8_t));
+	if (raw == NULL) {
+		perror("can't store wav");
+		exit(1);
+	}
+	for (i = 0; i<data->N; i++) {
+		value = data->rsamp[i];
+		raw[4*i+0] = ((value & 0x00ff) >> 0);
+		raw[4*i+1] = ((value & 0xff00) >> 8);
+
+		value = data->lsamp[i];
+		raw[4*i+2] = ((value & 0x00ff) >> 0);
+		raw[4*i+3] = ((value & 0xff00) >> 8);
+	}
+	written = fwrite(raw, sizeof(uint8_t), data->N*2*2, w);
+#if DEBUG
+	printf("\tbytes written: %d\n", written);
+#endif
+
+	return written;
 }
 

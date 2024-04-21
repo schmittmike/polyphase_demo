@@ -48,5 +48,7 @@ int main(void)
 		printf("l: %d r: %d \n", mega.rsamp[i], mega.lsamp[i]);
 	}
 
+	store_wav_file("test_mega.wav", &mega);
+
 	return 0;
 }
