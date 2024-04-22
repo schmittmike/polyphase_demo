@@ -10,35 +10,49 @@
 #define DEBUG 0
 #define ELEMENT_COUNT(X) (sizeof(X) / sizeof((X)[0]))
 
+struct linear_convolve_arguments {
+	double *signal;
+	size_t signal_len;
+	double *kernel;
+	size_t kernel_len;
+	double *result;
+};
+
 void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 		double *coefs, int n_coefs, int n_taps);
 
-void linear_convolve(const double signal[/* signal_len */], size_t signal_len,
-		     const double kernel[/* kernel_len */], size_t kernel_len,
-		     double result[/* signal_len + kernel_len - 1 */]);
+void *linear_convolve(void *p);
 
 
 /* https://stackoverflow.com/questions/8424170/1d-linear-convolution-in-ansi-c-code
  * sample linear convolution code found here*/
-void linear_convolve(const double signal[/* signal_len */], size_t signal_len,
-		     const double kernel[/* kernel_len */], size_t kernel_len,
-		     double result[/* signal_len + kernel_len - 1 */])
+void *linear_convolve(void *p)
 {
+	/* recast pthreads argument */
+	struct linear_convolve_arguments *args = (struct linear_convolve_arguments *)p;
+
 	size_t n;
 
-	for (n = 0; n < signal_len + kernel_len - 1; n++)
+	//double *signal = args->signal;
+	//size_t signal_len = args->signal_len;
+	//double *kernel = args->kernel;
+	//size_t kernel_len = args->kernel_len;
+	//double *result = args->result;
+
+
+	for (n = 0; n < args->signal_len + args->kernel_len - 1; n++)
 	{
 		size_t kmin, kmax, k;
 
-		result[n] = 0;
+		args->result[n] = 0;
 
 		/* calculate the overlap of the two signals */
-		kmin = (n >= kernel_len - 1) ? n - (kernel_len - 1) : 0;
-		kmax = (n < signal_len - 1) ? n : signal_len - 1;
+		kmin = (n >= args->kernel_len - 1) ? n - (args->kernel_len - 1) : 0;
+		kmax = (n < args->signal_len - 1) ? n : args->signal_len - 1;
 
 		for (k = kmin; k <= kmax; k++)
 		{
-			result[n] += signal[k] * kernel[n - k];
+			args->result[n] += args->signal[k] * args->kernel[n - k];
 		}
 	}
 }
@@ -53,11 +67,21 @@ void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 {
 	int i, j;
 	int M, N;
-	M = n_taps;
-	N = 600000;
-	//N = input->N;
 	double **x, **h, **r;
 
+	struct linear_convolve_arguments *args = malloc(M*sizeof(struct linear_convolve_arguments));
+	pthread_t *tid = calloc(M, sizeof(pthread_t));
+	void *thread_return;
+
+	M = n_taps;
+	N = 10000;
+	//N = input->N;
+
+	/* make sure that the sample count is divisible into each tap */
+	N = N - N%M;
+
+	h = malloc(M*sizeof(double *));
+	//
 	//TODO: add second channel
 
 	/* carefully split input streams into M taps:
@@ -106,8 +130,7 @@ void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 	}
 
 	/* allocate space for the split coefficients */
-	h = malloc(n_coefs*sizeof(double*));
-	for (i = 0; i < M; i++) {
+	for (i = 0; i<M; i++) {
 		h[i] = malloc((n_coefs/M)*sizeof(double));
 	}
 
@@ -136,18 +159,30 @@ void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 	printf("\n");
 #endif
 
-	/* convolve! */
-
+	/* allocate result arrays for each tap */
 	r = malloc(M*sizeof(double *));
 	for (i = 0; i<M; i++) {
 		/* result of 1d convolution is len signal+kernel+1 */
 		r[i] = malloc((N/M + n_coefs/M + 1)*sizeof(double));
 		//r = malloc((N + n_coefs + 1)*sizeof(double));
 	}
+
+	/* convolve! */
+	for (i = 0; i < M; i++) {
+		args[i].signal = x[i];
+		args[i].signal_len = N/M;
+		args[i].kernel = h[i];
+		args[i].kernel_len = n_coefs/M;
+		args[i].result = r[i];
+	}
 	for (i = 0; i < M; i++) {
 		printf("starting tap %d...\n", i);
-		linear_convolve(x[i], N/M, h[i], n_coefs/M, r[i]);
+		pthread_create(&tid[i], NULL, linear_convolve, &args[i]);
 	}
+	for (i = 0; i < M; i++) {
+		pthread_join(tid[i], &thread_return);
+	}
+
 	for (i = 1; i < M; i++) {
 		for (j = 0; j<N/M; j++) {
 			r[0][j] += r[i][j];
@@ -155,8 +190,8 @@ void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 	}
 
 #if DEBUG
-	for (i = 0; i<16; i++) {
-		printf("%lf\n", r[i]);
+	for (i = 0; i<5; i++) {
+		printf("%lf\n", r[0][i]);
 	}
 #endif
 

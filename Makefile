@@ -1,7 +1,8 @@
 TARGET=polyphase_decimate
 OBJS=polyphase_decimate.o wav.o
-CARGS=-Wall -Wextra
+CARGS=-ggdb -Wall -Wextra
 LINKS=-lpthread
+CC+= -g 
 
 all: $(TARGET)
 
