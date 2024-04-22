@@ -74,8 +74,8 @@ void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 	void *thread_return;
 
 	M = n_taps;
-	N = 10000;
-	//N = input->N;
+	//N = 600000;
+	N = input->N;
 
 	/* make sure that the sample count is divisible into each tap */
 	N = N - N%M;
@@ -209,6 +209,7 @@ void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 
 	/* save samples to result and save new sample-rate */
 
+	/* TODO: more complete frees? */
 	for (i = 0; i<M; i++) {
 		free(x[i]);
 		free(h[i]);
@@ -222,14 +223,23 @@ void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 }
 
 
-int main(void)
+int main(int argc, char **argv)
 {
 	struct Wav mega;
 	struct Wav out;
+	int taps = 1;
+
+	/* TODO: i/o filenames in args, input validation */
+	if (argc == 2) {
+		taps = atoi(argv[1]);
+	} else {
+		printf("[INFO] usage: %s <n_taps=1>\n", argv[0]);
+	}
 
 	load_wav_file("/home/sch/Music/megalomania.wav", &mega);
 
-	polyphase_fir_2channel_wav(&mega, &out, bandpass_coefs, BANDPASS_N_COEFS, 6);
+	printf("[INFO] using %d taps...\n", taps);
+	polyphase_fir_2channel_wav(&mega, &out, bandpass_coefs, BANDPASS_N_COEFS, taps);
 
 	store_wav_file("test_mega.wav", &out);
 
