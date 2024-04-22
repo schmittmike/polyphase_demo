@@ -40,7 +40,7 @@ N = len(x[:,0])
 n = np.arange(0, N)
 
 c = [i for i in range(6*2, 0, -1)]
-taps = 1
+taps = 6
 d = polyphase_fir_2channel_wav(x, bandpass_coefs, taps)
 x_filt = np.convolve(x[:,0], c)
 

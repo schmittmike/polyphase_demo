@@ -5,7 +5,7 @@
 
 #include "wav.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* mallocs the wav sample pointers
  * returns total bytes read from data section of wav header
@@ -186,7 +186,7 @@ int store_wav_file(const char *filename, struct Wav *data)
 	/* 41-44 total bytes in data section */
 	value = data->data_size;
 #if DEBUG
-	printf("\tsample rate: %d\n", value);
+	printf("\tdata size: %d\n", data->data_size);
 #endif
 	buf[40] = (value & 0x000000ff) >> 0;
 	buf[41] = (value & 0x0000ff00) >> 8;
