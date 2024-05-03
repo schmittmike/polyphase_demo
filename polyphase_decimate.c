@@ -2,13 +2,14 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 
 #include "wav.h"
 #include "bandpass.h"
 
 #define DEBUG 0
-#define ELEMENT_COUNT(X) (sizeof(X) / sizeof((X)[0]))
+#define FILENAME_LIM 100
 
 struct linear_convolve_arguments {
 	double *signal;
@@ -177,12 +178,14 @@ void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 	}
 	for (i = 0; i < M; i++) {
 		printf("starting tap %d...\n", i);
-		pthread_create(&tid[i], NULL, linear_convolve, &args[i]);
+		if (M == 1) linear_convolve(&args[i]);
+		else pthread_create(&tid[i], NULL, linear_convolve, &args[i]);
 	}
 	for (i = 0; i < M; i++) {
 		pthread_join(tid[i], &thread_return);
 	}
 
+	/* TODO: parallelize? */
 	for (i = 1; i < M; i++) {
 		for (j = 0; j<N/M; j++) {
 			r[0][j] += r[i][j];
@@ -225,23 +228,26 @@ void polyphase_fir_2channel_wav(struct Wav *input, struct Wav *result,
 
 int main(int argc, char **argv)
 {
-	struct Wav mega;
-	struct Wav out;
+	struct Wav in, out;
 	int taps = 1;
+	char input_file[FILENAME_LIM];
+	char output_file[FILENAME_LIM];
 
-	/* TODO: i/o filenames in args, input validation */
-	if (argc == 2) {
+	/* TODO: input validation */
+	if (argc == 4) {
 		taps = atoi(argv[1]);
+		strncpy(input_file, argv[2], FILENAME_LIM);
+		strncpy(output_file, argv[3], FILENAME_LIM);
 	} else {
-		printf("[INFO] usage: %s <n_taps=1>\n", argv[0]);
+		printf("[INFO] usage: %s <n_taps=1> <input wav> <output wav>\n", argv[0]);
 	}
 
-	load_wav_file("/home/sch/Music/megalomania.wav", &mega);
+	load_wav_file(input_file, &in);
 
 	printf("[INFO] using %d taps...\n", taps);
-	polyphase_fir_2channel_wav(&mega, &out, bandpass_coefs, BANDPASS_N_COEFS, taps);
+	polyphase_fir_2channel_wav(&in, &out, bandpass_coefs, BANDPASS_N_COEFS, taps);
 
-	store_wav_file("test_mega.wav", &out);
+	store_wav_file(output_file, &out);
 
 	return 0;
 }
